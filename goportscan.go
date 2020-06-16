@@ -1,6 +1,7 @@
+package main
+
 // Script is used to run a portscan via nmap (assumed accessible via $PATH var),
 // and identify different protocols on host/ip addresses listing
-package main
 
 import (
 	"bufio"
