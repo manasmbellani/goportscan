@@ -68,8 +68,10 @@ func main() {
 	outprefixfolderPtr := flag.String("o", "",
 		"Output folder's prefix to write nmap results. Contains 'hostname'"+
 			"too as suffix")
-	runVersionScansPtr := flag.Bool("runVersionScan", false,
+	runVersionScansPtr := flag.Bool("versionScan", false,
 		"Include version scans for TCP traffic")
+	runOSScanPtr := flag.Bool("osScan", false,
+		"Includes OS Scan, version scans via the aggressive scan (-A) option")
 	verbosePtr := flag.Bool("verbose", false, "Show detailed info as cmds exec")
 	skipUDPPtr := flag.Bool("skipUDP", false, "Skip UDP scanning of host")
 
@@ -83,6 +85,7 @@ func main() {
 	skipUDP := *skipUDPPtr
 	outprefixfolder := *outprefixfolderPtr
 	runVersionScans := *runVersionScansPtr
+	runOSScan := *runOSScanPtr
 
 	// Get the ports to scan
 	portsArg := ""
@@ -149,6 +152,9 @@ func main() {
 			}
 			if runVersionScans {
 				cmd += " -sV"
+			}
+			if runOSScan {
+				cmd += " -A"
 			}
 			cmd = strings.ReplaceAll(cmd, "{portsArg}", portsArg)
 			cmd = strings.ReplaceAll(cmd, "{host}", host)

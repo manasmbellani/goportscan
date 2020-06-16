@@ -23,11 +23,11 @@ $ cat targets | sudo go run goportscan.go -skipUDP
 ```
 
 ### Run version scan and store results
-To run a version scan on a target `www.google.com` and store the results in an 
+To run a version scan and aggressive scan (which includes OS Scanning via `-A` nmap flag)  on a target `www.google.com` and store the results in an 
 output folder `out-nmap-www.google.com`
 
 ```
-$ echo -e "www.google.com" | sudo go run goportscan.go -skipUDP -runVersionScan -o out-nmap
+$ echo -e "www.google.com" | sudo go run goportscan.go -skipUDP -runVersionScan -osScan -o out-nmap
 [tcp] http://www.google.com:80
 [tcp] https://www.google.com:443
 
