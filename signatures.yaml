@@ -27,7 +27,7 @@ signatures:
     - protocol: smtp
       regex: "smtp"
     - protocol: rpcbind
-      regex: "portmap"
+      regex: "portmap|msrpc"
     - protocol: dns
       regex: "(dns|[\\s]domain[\\s|$])"
     - protocol: "rdp"
