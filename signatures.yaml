@@ -1,15 +1,29 @@
 # Add new signatures to identify appropriate protocols
+# Note that signatures are generally checked from top-down order so encrypted 
+# protocols are listed before 
 signatures:
     - protocol: smb
       regex: "(microsoft-ds|netbios|smb|samba|smbd)"
-    - protocol: http
-      regex: "http(\\s|$)"
     - protocol: https
-      regex: "https|ssl/|https"
+      regex: "https|ssl/http|ssl/ssl"
+    - protocol: http
+      regex: "http(\\s|$|-)"
+    - protocol: imaps
+      regex: "ssl/imap|imap-ssl|imaps"
+    - protocol: imap
+      regex: "imap(\\s|$)"
+    - protocol: pop3s
+      regex: "pop3s|pop3-ssl|ssl/pop3"
+    - protocol: pop3
+      regex: "pop3(\\s|$)"
+    - protocol: ftps
+      regex: "ssl/ftp|ftp-ssl|ftps"
     - protocol: ftp
-      regex: "[^t]ftp"
+      regex: "[^t]ftp(\\s|$)"
     - protocol: tftp
       regex: "tftp"
+    - protocol: smtps
+      regex: "ssl/smtp|smtp-ssl|smtps"
     - protocol: smtp
       regex: "smtp"
     - protocol: rpcbind
@@ -18,6 +32,10 @@ signatures:
       regex: "(dns|[\\s]domain[\\s|$])"
     - protocol: "rdp"
       regex: "ms-wbt"
+    - protocol: "mssql"
+      regex: "ms-sql|mssql"
+    - protocol: "mysql"
+      regex: "my-sql|mysql"
     - protocol: "rdp_gateway"
       regex: "(3391/tcp|3391/udp|rdp-gateway|rdpgateway)"
     - protocol: "ssh"
