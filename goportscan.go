@@ -63,6 +63,7 @@ type YamlSignatureConfig struct {
 }
 
 func main() {
+	numThreadsPtr := flag.Int("t", 20, "Number of goroutines for port scanning")
 	portStrPtr := flag.String("ports", "common", "TCP ports to scan for - "+
 		"can specify individual ports separated with comma (,)")
 	outprefixfolderPtr := flag.String("o", "",
@@ -79,6 +80,7 @@ func main() {
 		"Signatures file to identify protocol signatures")
 	flag.Parse()
 
+	numThreads := *numThreadsPtr
 	portsStr := *portStrPtr
 	verbose := *verbosePtr
 	sigFile := *signaturesFilePtr
@@ -111,113 +113,129 @@ func main() {
 
 	var wg sync.WaitGroup
 
+	// Hosts to port scan
+	hosts := make(chan string)
+
+	for i := 0; i < numThreads; i++ {
+		wg.Add(1)
+
+		// Go subroutine to perform the port scan
+		go func(hosts chan string, wg *sync.WaitGroup) {
+
+			// Start listening on channel for hosts to process
+			for host := range hosts {
+				// Prepare outfiles to write nmap results in different formats for
+				// TCP/UDP
+				outfolder := ""
+				outfileNormTCP := ""
+				outfileGrepTCP := ""
+				outfileXmlTCP := ""
+				outfileNormUDP := ""
+				outfileGrepUDP := ""
+				outfileXmlUDP := ""
+				if outprefixfolder != "" {
+					outfolder = outprefixfolder + "-" + host
+
+					// Make the output folder if it doesn't exist
+					_ = os.Mkdir(outfolder, 0700)
+
+					outfileNormTCP = path.Join(outfolder, "out-nmap-norm-tcp.txt")
+					outfileGrepTCP = path.Join(outfolder, "out-nmap-grep-tcp.txt")
+					outfileXmlTCP = path.Join(outfolder, "out-nmap-xml-tcp.txt")
+
+					outfileNormUDP = path.Join(outfolder, "out-nmap-norm-udp.txt")
+					outfileGrepUDP = path.Join(outfolder, "out-nmap-grep-udp.txt")
+					outfileXmlUDP = path.Join(outfolder, "out-nmap-xml-udp.txt")
+				}
+
+				// Run TCP Port scan
+				cmd := ""
+				cmd = "sudo nmap --open {portsArg} -sS -Pn {host}"
+				if outfolder != "" {
+					cmd += " -oN " + outfileNormTCP + " -oG " + outfileGrepTCP +
+						" -oX " + outfileXmlTCP
+				}
+				if runVersionScans {
+					cmd += " -sV"
+				}
+				if runOSScan {
+					cmd += " -A"
+				}
+				cmd = strings.ReplaceAll(cmd, "{portsArg}", portsArg)
+				cmd = strings.ReplaceAll(cmd, "{host}", host)
+				outTCP := execCmd(cmd, verbose)
+
+				// Run UDP Port scan
+				outUDP := ""
+				if !skipUDP {
+					cmd = "sudo nmap --open --top-ports 20 -sU -Pn {host}"
+					if outfolder != "" {
+						cmd += " -oN " + outfileNormUDP + " -oG " + outfileGrepUDP +
+							" -oX " + outfileXmlUDP
+					}
+					cmd = strings.ReplaceAll(cmd, "{portsArg}", portsArg)
+					cmd = strings.ReplaceAll(cmd, "{host}", host)
+					outUDP = execCmd(cmd, verbose)
+				}
+
+				// Combine outputs
+				out := outTCP + "\n" + outUDP
+
+				// Parse output to look for lines with open ports
+				outlines := strings.Split(out, "\n")
+				for _, outline := range outlines {
+					if outline != "" {
+
+						// Find a line with open port
+						openPortLineRegex := OpenPortLineSig
+						found, _ := regexp.MatchString(openPortLineRegex, outline)
+						if found {
+							// Get the port
+							port := strings.Split(outline, "/")[0]
+
+							// Is port on TCP/UDP?
+							transportProtocol := strings.Split(strings.Split(outline, "/")[1], " ")[0]
+
+							// Track if signature found for port
+							sigFound := false
+
+							// Search for a signature within the output
+							for _, signature := range signatures {
+
+								// Check if relevant regex signature present in nmap
+								// outline - if it is, then implement the block
+								protocolRegex := signature.Regex
+								protocol := signature.Protocol
+
+								found, _ := regexp.MatchString(protocolRegex, outline)
+								if found {
+									fmt.Printf("[%s] %s://%s:%s\n", transportProtocol, protocol, host, port)
+									sigFound = true
+									break
+								}
+							}
+							if !sigFound {
+								fmt.Printf("[%s] unknown://%s:%s\n", transportProtocol, host, port)
+							}
+						}
+					}
+				}
+			}
+			wg.Done()
+		}(hosts, &wg)
+	}
+
 	// Take list of hosts to scan from user via STDIN
 	sc := bufio.NewScanner(os.Stdin)
 	for sc.Scan() {
 		host := sc.Text()
 
-		wg.Add(1)
-		go func() {
-
-			// Prepare outfiles to write nmap results in different formats for
-			// TCP/UDP
-			outfolder := ""
-			outfileNormTCP := ""
-			outfileGrepTCP := ""
-			outfileXmlTCP := ""
-			outfileNormUDP := ""
-			outfileGrepUDP := ""
-			outfileXmlUDP := ""
-			if outprefixfolder != "" {
-				outfolder = outprefixfolder + "-" + host
-
-				// Make the output folder if it doesn't exist
-				_ = os.Mkdir(outfolder, 0700)
-
-				outfileNormTCP = path.Join(outfolder, "out-nmap-norm-tcp.txt")
-				outfileGrepTCP = path.Join(outfolder, "out-nmap-grep-tcp.txt")
-				outfileXmlTCP = path.Join(outfolder, "out-nmap-xml-tcp.txt")
-
-				outfileNormUDP = path.Join(outfolder, "out-nmap-norm-udp.txt")
-				outfileGrepUDP = path.Join(outfolder, "out-nmap-grep-udp.txt")
-				outfileXmlUDP = path.Join(outfolder, "out-nmap-xml-udp.txt")
-			}
-
-			// Run TCP Port scan
-			cmd := ""
-			cmd = "sudo nmap --open {portsArg} -sS -Pn {host}"
-			if outfolder != "" {
-				cmd += " -oN " + outfileNormTCP + " -oG " + outfileGrepTCP +
-					" -oX " + outfileXmlTCP
-			}
-			if runVersionScans {
-				cmd += " -sV"
-			}
-			if runOSScan {
-				cmd += " -A"
-			}
-			cmd = strings.ReplaceAll(cmd, "{portsArg}", portsArg)
-			cmd = strings.ReplaceAll(cmd, "{host}", host)
-			outTCP := execCmd(cmd, verbose)
-
-			// Run UDP Port scan
-			outUDP := ""
-			if !skipUDP {
-				cmd = "sudo nmap --open --top-ports 20 -sU -Pn {host}"
-				if outfolder != "" {
-					cmd += " -oN " + outfileNormUDP + " -oG " + outfileGrepUDP +
-						" -oX " + outfileXmlUDP
-				}
-				cmd = strings.ReplaceAll(cmd, "{portsArg}", portsArg)
-				cmd = strings.ReplaceAll(cmd, "{host}", host)
-				outUDP = execCmd(cmd, verbose)
-			}
-
-			// Combine outputs
-			out := outTCP + "\n" + outUDP
-
-			// Parse output to look for lines with open ports
-			outlines := strings.Split(out, "\n")
-			for _, outline := range outlines {
-				if outline != "" {
-
-					// Find a line with open port
-					openPortLineRegex := OpenPortLineSig
-					found, _ := regexp.MatchString(openPortLineRegex, outline)
-					if found {
-						// Get the port
-						port := strings.Split(outline, "/")[0]
-
-						// Is port on TCP/UDP?
-						transportProtocol := strings.Split(strings.Split(outline, "/")[1], " ")[0]
-
-						// Track if signature found for port
-						sigFound := false
-
-						// Search for a signature within the output
-						for _, signature := range signatures {
-
-							// Check if relevant regex signature present in nmap
-							// outline - if it is, then implement the block
-							protocolRegex := signature.Regex
-							protocol := signature.Protocol
-
-							found, _ := regexp.MatchString(protocolRegex, outline)
-							if found {
-								fmt.Printf("[%s] %s://%s:%s\n", transportProtocol, protocol, host, port)
-								sigFound = true
-								break
-							}
-						}
-						if !sigFound {
-							fmt.Printf("[%s] unknown://%s:%s\n", transportProtocol, host, port)
-						}
-					}
-				}
-			}
-
-			wg.Done()
-		}()
+		// Add the host for processing
+		hosts <- host
 	}
+
+	// No more hosts to process - all done.
+	close(hosts)
+
 	wg.Wait()
 }
