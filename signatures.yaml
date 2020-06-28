@@ -42,3 +42,5 @@ signatures:
       regex: "ssh"
     - protocol: "minishare"
       regex: "^123/tcp"
+    - protocol: "jolokia"
+      regex: "^8778/tcp"
