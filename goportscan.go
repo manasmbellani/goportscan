@@ -55,7 +55,7 @@ func execCmd(cmdToExec string, verbose bool) string {
 	return totalOut
 }
 
-type YamlSignatureConfig struct {
+type yamlSignatureConfig struct {
 	Signatures []struct {
 		Protocol string `yaml:"protocol"`
 		Regex    string `yaml:"regex"`
@@ -89,6 +89,12 @@ func main() {
 	runVersionScans := *runVersionScansPtr
 	runOSScan := *runOSScanPtr
 
+	// Verbose logging required?
+	if !verbose {
+		log.SetFlags(0)
+		log.SetOutput(ioutil.Discard)
+	}
+
 	// Get the ports to scan
 	portsArg := ""
 	if portsStr == "all" {
@@ -100,13 +106,24 @@ func main() {
 	}
 
 	// Parse the signatures file and get the signatures
-	var c YamlSignatureConfig
+	var c yamlSignatureConfig
+
+	// Check if signature file exists
+	_, err := os.Stat(sigFile)
+	if os.IsNotExist(err) {
+		log.Fatalf("Signature file: %s not found", sigFile)
+	}
+
+	// Read the signature file
 	yamlFile, err := ioutil.ReadFile(sigFile)
 	if err != nil {
+		fmt.Printf("[-] yamlFile.Get err   #%v ", err)
 		log.Fatalf("[-] yamlFile.Get err   #%v ", err)
+
 	}
 	err = yaml.Unmarshal(yamlFile, &c)
 	if err != nil {
+		fmt.Printf("[-] Unmarshal Error: %v", err)
 		log.Fatalf("[-] Unmarshal Error: %v", err)
 	}
 	signatures := c.Signatures
@@ -129,10 +146,10 @@ func main() {
 				outfolder := ""
 				outfileNormTCP := ""
 				outfileGrepTCP := ""
-				outfileXmlTCP := ""
+				outfileXMLTCP := ""
 				outfileNormUDP := ""
 				outfileGrepUDP := ""
-				outfileXmlUDP := ""
+				outfileXMLUDP := ""
 				if outprefixfolder != "" {
 					outfolder = outprefixfolder + "-" + host
 
@@ -141,19 +158,20 @@ func main() {
 
 					outfileNormTCP = path.Join(outfolder, "out-nmap-norm-tcp.txt")
 					outfileGrepTCP = path.Join(outfolder, "out-nmap-grep-tcp.txt")
-					outfileXmlTCP = path.Join(outfolder, "out-nmap-xml-tcp.txt")
+					outfileXMLTCP = path.Join(outfolder, "out-nmap-xml-tcp.txt")
 
 					outfileNormUDP = path.Join(outfolder, "out-nmap-norm-udp.txt")
 					outfileGrepUDP = path.Join(outfolder, "out-nmap-grep-udp.txt")
-					outfileXmlUDP = path.Join(outfolder, "out-nmap-xml-udp.txt")
+					outfileXMLUDP = path.Join(outfolder, "out-nmap-xml-udp.txt")
 				}
 
-				// Run TCP Port scan
+				// Run TCP Port scan on host
+				log.Printf("[*] Performing TCP scan on host: %s", host)
 				cmd := ""
 				cmd = "sudo nmap --open {portsArg} -sS -Pn {host}"
 				if outfolder != "" {
 					cmd += " -oN " + outfileNormTCP + " -oG " + outfileGrepTCP +
-						" -oX " + outfileXmlTCP
+						" -oX " + outfileXMLTCP
 				}
 				if runVersionScans {
 					cmd += " -sV"
@@ -168,10 +186,11 @@ func main() {
 				// Run UDP Port scan
 				outUDP := ""
 				if !skipUDP {
+					log.Printf("[*] Performing UDP scan on host: %s", host)
 					cmd = "sudo nmap --open --top-ports 20 -sU -Pn {host}"
 					if outfolder != "" {
 						cmd += " -oN " + outfileNormUDP + " -oG " + outfileGrepUDP +
-							" -oX " + outfileXmlUDP
+							" -oX " + outfileXMLUDP
 					}
 					cmd = strings.ReplaceAll(cmd, "{portsArg}", portsArg)
 					cmd = strings.ReplaceAll(cmd, "{host}", host)
