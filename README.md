@@ -29,7 +29,7 @@ To run a version scan and aggressive scan (which includes OS Scanning via `-A` n
 output folder `out-nmap-www.google.com`
 
 ```
-$ echo -e "www.google.com" | sudo go run goportscan.go -skipUDP -runVersionScan -osScan -o out-nmap
+$ echo -e "www.google.com" | sudo go run goportscan.go -runVersionScan -osScan -o out-nmap
 [tcp] http://www.google.com:80
 [tcp] https://www.google.com:443
 
