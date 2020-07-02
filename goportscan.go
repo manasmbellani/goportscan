@@ -19,6 +19,12 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+// TopUDPPortsToScan - Top UDP ports to scan
+const TopUDPPortsToScan = "25"
+
+// CommonPorts - TCP Common Ports to use only when looking for a host that is alive. Skip UDP scan.
+const CommonPorts = "21,22,25,53,80,110,139,143,389,443,445,465,587,636,3306,3389,8080,8443,9080,9443"
+
 // OpenPortLineSig - Regex for identifying line containing an open port in Nmap Output
 const OpenPortLineSig = "[0-9]+/(tcp|udp).*open[\\s]+"
 
@@ -64,17 +70,17 @@ type yamlSignatureConfig struct {
 
 func main() {
 	numThreadsPtr := flag.Int("t", 20, "Number of goroutines for port scanning")
-	portStrPtr := flag.String("ports", "common", "TCP ports to scan for - "+
-		"can specify individual ports separated with comma (,)")
+	portStrPtr := flag.String("p", "top1000", "TCP ports to scan for - "+
+		"can specify individual ports separated with comma (,). Options are: common, top1000, all, or comma-sep custom ports list")
 	outprefixfolderPtr := flag.String("o", "",
 		"Output folder's prefix to write nmap results. Contains 'hostname'"+
 			"too as suffix")
 	runVersionScansPtr := flag.Bool("versionScan", false,
 		"Include version scans for TCP traffic")
 	runOSScanPtr := flag.Bool("osScan", false,
-		"Includes OS Scan, version scans via the aggressive scan (-A) option")
-	verbosePtr := flag.Bool("verbose", false, "Show detailed info as cmds exec")
-	skipUDPPtr := flag.Bool("skipUDP", false, "Skip UDP scanning of host")
+		"Includes TCP OS Scan, version scans via the aggressive scan (-A) option")
+	verbosePtr := flag.Bool("v", false, "Show detailed info as cmds exec")
+	runUDPPtr := flag.Bool("u", false, "Run UDP scanning of host")
 
 	signaturesFilePtr := flag.String("sigFile", "signatures.yaml",
 		"Signatures file to identify protocol signatures")
@@ -84,7 +90,7 @@ func main() {
 	portsStr := *portStrPtr
 	verbose := *verbosePtr
 	sigFile := *signaturesFilePtr
-	skipUDP := *skipUDPPtr
+	runUDP := *runUDPPtr
 	outprefixfolder := *outprefixfolderPtr
 	runVersionScans := *runVersionScansPtr
 	runOSScan := *runOSScanPtr
@@ -99,8 +105,10 @@ func main() {
 	portsArg := ""
 	if portsStr == "all" {
 		portsArg = "--top-ports 65536"
-	} else if portsStr == "common" {
+	} else if portsStr == "top1000" {
 		portsArg = "--top-ports 1000"
+	} else if portsStr == "common" {
+		portsArg = "-p " + CommonPorts
 	} else {
 		portsArg = "-p " + portsStr
 	}
@@ -111,20 +119,21 @@ func main() {
 	// Check if signature file exists
 	_, err := os.Stat(sigFile)
 	if os.IsNotExist(err) {
-		log.Fatalf("Signature file: %s not found", sigFile)
+		fmt.Printf("[-] Signature file: %s not found\n", sigFile)
+		log.Fatalf("[-] Signature file: %s not found\n", sigFile)
 	}
 
 	// Read the signature file
 	yamlFile, err := ioutil.ReadFile(sigFile)
 	if err != nil {
-		fmt.Printf("[-] yamlFile.Get err   #%v ", err)
-		log.Fatalf("[-] yamlFile.Get err   #%v ", err)
+		fmt.Printf("[-] yamlFile.Get err   #%v\n", err)
+		log.Fatalf("[-] yamlFile.Get err   #%v\n", err)
 
 	}
 	err = yaml.Unmarshal(yamlFile, &c)
 	if err != nil {
-		fmt.Printf("[-] Unmarshal Error: %v", err)
-		log.Fatalf("[-] Unmarshal Error: %v", err)
+		fmt.Printf("[-] Unmarshal Error: %v\n", err)
+		log.Fatalf("[-] Unmarshal Error: %v\n", err)
 	}
 	signatures := c.Signatures
 
@@ -168,7 +177,7 @@ func main() {
 				// Run TCP Port scan on host
 				log.Printf("[*] Performing TCP scan on host: %s", host)
 				cmd := ""
-				cmd = "sudo nmap --open {portsArg} -sS -Pn {host}"
+				cmd = "sudo nmap -T4 --open {portsArg} -sS -Pn {host}"
 				if outfolder != "" {
 					cmd += " -oN " + outfileNormTCP + " -oG " + outfileGrepTCP +
 						" -oX " + outfileXMLTCP
@@ -185,16 +194,19 @@ func main() {
 
 				// Run UDP Port scan
 				outUDP := ""
-				if !skipUDP {
+				if runUDP {
 					log.Printf("[*] Performing UDP scan on host: %s", host)
-					cmd = "sudo nmap --open --top-ports 20 -sU -Pn {host}"
+					cmd = "sudo nmap --open --top-ports {top_udp_ports} -sU -Pn {host}"
 					if outfolder != "" {
 						cmd += " -oN " + outfileNormUDP + " -oG " + outfileGrepUDP +
 							" -oX " + outfileXMLUDP
 					}
+					cmd = strings.ReplaceAll(cmd, "{top_udp_ports}", TopUDPPortsToScan)
 					cmd = strings.ReplaceAll(cmd, "{portsArg}", portsArg)
 					cmd = strings.ReplaceAll(cmd, "{host}", host)
 					outUDP = execCmd(cmd, verbose)
+				} else {
+					log.Printf("[*] Skipping UDP scanning of host: %s, as -runUDP flag not selected", host)
 				}
 
 				// Combine outputs

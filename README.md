@@ -6,14 +6,14 @@ protocols running on open ports through a custom signatures file
 ## Examples
 
 ### To discover open ports
-To discover the ports for targets listed in file `targets.txt`, run the command:
+To discover the TCP ports for targets listed in file `targets.txt`, run the command:
 
 ```
 $ cat targets.txt
 www.google.com
 www.hotmail.com
 
-$ cat targets | sudo go run goportscan.go -skipUDP
+$ cat targets | sudo go run goportscan.go
 [tcp] http://www.google.com:80
 [tcp] https://www.google.com:443
 [tcp] unknown://www.hotmail.com:100
@@ -21,6 +21,8 @@ $ cat targets | sudo go run goportscan.go -skipUDP
 [tcp] https://www.hotmail.com:443
 [tcp] smb://www.hotmail.com:445
 ```
+
+To scan for all TCP 65536 ports, select `-p all`. By default, UDP scan will only be run on the top `25` ports. 
 
 ### Run version scan and store results
 To run a version scan and aggressive scan (which includes OS Scanning via `-A` nmap flag)  on a target `www.google.com` and store the results in an 
@@ -38,10 +40,10 @@ Host: 172.217.167.68 (syd15s06-in-f4.1e100.net) Ports: 80/open/tcp//http//gws/, 
 ```
 
 ### Verbose mode and skip UDP scan
-To show commands as they are executed when running on `www.google.com`, select `-verbose` flag and `-skipUDP` to skip UDP scanning
+To show commands as they are executed when running on `www.google.com`, select `-v` flag and `-runUDP` to run UDP scanning
 
 ```
-$ echo -e "www.google.com" | sudo go run goportscan.go -skipUDP -verbose
+$ echo -e "www.google.com" | sudo go run goportscan.go -runUDP -v
 
 2020/06/14 11:46:19 [v] Executing cmd: sudo nmap --open --top-ports 1000 -sS -Pn www.google.com
 2020/06/14 11:46:49 [v] Output of cmd 'sudo nmap --open --top-ports 1000 -sS -Pn www.google.com':
