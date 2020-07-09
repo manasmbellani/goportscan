@@ -44,3 +44,5 @@ signatures:
       regex: "^123/tcp"
     - protocol: "jolokia"
       regex: "^8778/tcp"
+    - protocol: "hadoop"
+      regex: "^(8088|8090)/tcp"
