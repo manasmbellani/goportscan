@@ -81,7 +81,7 @@ func main() {
 		"Includes TCP OS Scan, version scans via the aggressive scan (-A) option")
 	verbosePtr := flag.Bool("v", false, "Show detailed info as cmds exec")
 	runUDPPtr := flag.Bool("u", false, "Run UDP scanning of host")
-	signaturesFilePtr := flag.String("sigFile", "/opt/gocmdscanner/signatures.yaml",
+	signaturesFilePtr := flag.String("sigFile", "/opt/goportscan/signatures.yaml",
 		"Signatures file to identify protocol signatures")
 	flag.Parse()
 
