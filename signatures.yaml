@@ -50,3 +50,7 @@ signatures:
       regex: "^700[0-9]|7010/tcp"
     - protocol: "docker"
       regex: "^2376/tcp"
+    - protocol: "mongodb"
+      regex: "^2701[7-9]/tcp"
+    - protocol: "elasticsearch"
+      regex: "^9200/tcp"
