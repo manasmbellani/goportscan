@@ -48,3 +48,5 @@ signatures:
       regex: "^(8088|8090)/tcp"
     - protocol: "oracle_t3"
       regex: "^700[0-9]|7010/tcp"
+    - protocol: "docker"
+      regex: "^2376/tcp"
