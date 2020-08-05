@@ -29,13 +29,13 @@ signatures:
     - protocol: rsh_rlogin
       regex: "^514/tcp"
     - protocol: smtps
-      regex: "ssl/smtp|smtp-ssl|smtps"
+      regex: "^465/tcp|ssl/smtp|smtp-ssl|smtps"
     - protocol: smtp
-      regex: "smtp"
+      regex: "^(25|587)/tcp|smtp"
     - protocol: rpcbind
       regex: "portmap|msrpc"
     - protocol: dns
-      regex: "(dns|[\\s]domain[\\s|$])"
+      regex: "(^53/tcp|dns|[\\s]domain[\\s|$])"
     - protocol: "rdp"
       regex: "ms-wbt"
     - protocol: "mssql"
