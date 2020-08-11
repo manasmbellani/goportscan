@@ -76,6 +76,8 @@ signatures:
       regex: "(^3128/tcp|http-proxy|squid)"
     - protocol: "kerberos"
       regex: "(^88/tcp|kerberos)"
+    - protocol: "couchdb"
+      regex: "(^5984/tcp|couch)"
     - protocol: "telnet"
       regex: "telnet"
     - protocol: "java-rmi"
