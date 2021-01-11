@@ -106,5 +106,7 @@ signatures:
       regex: "^(3000/tcp|node .js|node js|nodejs)"
     - protocol: "splunk"
       regex: "^(8000/tcp|splunk)"
+    - protocol: "splunk"
+      regex: "^(8089/tcp|splunkd)"
     - protocol: "chromecast"
       regex: "^(8008/tcp|chromecast)"
